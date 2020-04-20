@@ -51,7 +51,8 @@ public class SnowflakePipeWrapper {
 
     private static HistoryResponse waitForFilesHistory(SimpleIngestManager manager,
                                                        Set<String> files,
-                                                       long timeoutInMillis)
+                                                       long timeoutInMillis,
+                                                       UUID histId)
             throws Exception {
 
         String beginMark = null;
@@ -61,7 +62,8 @@ public class SnowflakePipeWrapper {
         long end = start + timeoutInMillis;
         while (true) {
             Thread.sleep(10000);
-            HistoryResponse response = manager.getHistory(null, null, beginMark);
+            HistoryResponse response = manager.getHistory(histId);
+            //HistoryResponse response = manager.getHistory(histId, null, beginMark);
             if (response.getNextBeginMark() != null) {
                 beginMark = response.getNextBeginMark();
             }
@@ -267,19 +269,19 @@ public class SnowflakePipeWrapper {
             }
             filesToIngest = putFiles(files, fileReadyPath, pipe_base, pipeTargetPath);
             UUID requestId = UUID.randomUUID();
+            System.out.println("Request ID = " + requestId.toString());
             IngestResponse response = manager.ingestFiles(SimpleIngestManager.wrapFilepaths(filesToIngest), requestId);
             System.out.println("Received ingest response: " + response.toString() + " at " + new Timestamp(System.currentTimeMillis()));
-            ;
-            HistoryResponse history = waitForFilesHistory(manager, filesToIngest, window);
-            String endTime = Instant
+            HistoryResponse history = waitForFilesHistory(manager, filesToIngest, window, requestId);
+           /* String endTime = Instant
                     .ofEpochMilli(System.currentTimeMillis()).toString();
 
             HistoryRangeResponse historyRangeResponse =
                     manager.getHistoryRange(requestId,
                             startTime,
-                            endTime);
+                            endTime);*/
 
-            JSONObject jsonResults = verifyResults(historyRangeResponse, fileReadyPath, source_path);
+            JSONObject jsonResults = verifyResults(history, fileReadyPath, source_path);
             logResults(jsonResults, account, privateKey);
             Timestamp endTs = new Timestamp(System.currentTimeMillis());
             long diffInMillis = Math.abs(endTs.getTime() - ts.getTime());
@@ -321,12 +323,13 @@ public class SnowflakePipeWrapper {
         return filesStaged;
     }
 
-    private static JSONObject verifyResults(HistoryRangeResponse historyRangeResponse, String fileReadyPath, String source_path)
+    private static JSONObject verifyResults(HistoryResponse historyResponse, String fileReadyPath, String source_path)
             throws ParseException, IOException {
-        String historyResponseStr = historyRangeResponse.toString();
-        System.out.println("Received history range response (as String): " +
-                historyResponseStr);
+        String historyResponseStr = historyResponse.toString();
+        //System.out.println("Received history range response (as String): " +
+        //        historyResponseStr);
         String historyResponseFormatted = new String("{" + historyResponseStr.replace("History Range Result:", "")
+                .replace("History Result:", "")
                 .replace("Complete result", "completeResult")
                 //.replaceAll(": '", "\\: '")
                 .replaceAll("(: )([^'])", "\"$1\"$2")
@@ -347,9 +350,6 @@ public class SnowflakePipeWrapper {
                 historyResponseFormatted);
         JSONParser jsonParser = new JSONParser();
         JSONObject jsonObj = (JSONObject) jsonParser.parse(historyResponseFormatted);
-
-
-
         JSONArray results = (JSONArray) jsonObj.get("result");
         @SuppressWarnings("unchecked")
         Iterator<JSONObject> it = results.iterator();

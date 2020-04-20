@@ -17,6 +17,10 @@ select
       ,  pipe.value:Complete::boolean Complete
       ,  pipe.value:ErrorsLimit::bigint ErrorsLimit
       ,  pipe.value:ErrorsSeen::bigint ErrorsSeen
+      ,  pipe.value:FirstError::string FirstError
+      ,  pipe.value:FirstErrorLineNum::bigint FirstErrorLineNum
+      ,  pipe.value:FirstErrorColumnName::string FirstErrorColumnName
+      ,  pipe.value:SystemError::string SystemError
       ,  pipe.value:FileSize::float FileSize
       ,  FileSize / 1024 FileSizeKB
       ,  FileSizeKB / 1024 FileSizeMB
@@ -103,5 +107,3 @@ select v.pipe_log_seq
       ,  TotalFileSize / pipe_duration BytesPerSec
   from pipe_log_vw v
   group by 1,2,3,4,5,6,7, 8, 9;
-
-  desc view pipe_log_agg_vw;
