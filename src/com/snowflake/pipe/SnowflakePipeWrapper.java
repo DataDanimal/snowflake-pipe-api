@@ -223,6 +223,7 @@ public class SnowflakePipeWrapper {
             // Get properties file from command line
             propFile = args[0];
             Timestamp ts = new Timestamp(System.currentTimeMillis());
+            String rangeStartTime = Instant.now().toString();;
             System.out.println("Reading property file " + propFile + " at " + ts);
             myProps = getSnflkProps();
             Set<String> files = new TreeSet<>();
@@ -282,6 +283,9 @@ public class SnowflakePipeWrapper {
                             endTime);*/
 
             JSONObject jsonResults = verifyResults(history, fileReadyPath, source_path);
+            jsonResults.put("starttime",  rangeStartTime);
+            String rangeEndTime = Instant.now().toString();;
+            jsonResults.put("endtime", rangeEndTime);
             logResults(jsonResults, account, privateKey);
             Timestamp endTs = new Timestamp(System.currentTimeMillis());
             long diffInMillis = Math.abs(endTs.getTime() - ts.getTime());
@@ -416,6 +420,7 @@ public class SnowflakePipeWrapper {
             lstmt.setString(1, logJsonStr);
             lstmt.addBatch();
             lstmt.executeBatch(); // After execution, count[0]=1, count[1]=1
+            System.out.println("******* Logging results");
             logConn.commit();
             lstmt.close();
         }

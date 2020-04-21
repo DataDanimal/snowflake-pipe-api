@@ -6,19 +6,28 @@ select
          l.pipe_log_seq
       ,  pipe.seq results_seq
       ,  pipe.index results_index
-      ,  l.pipe_log_msg:Pipe::string pipe
-      ,  l.pipe_log_msg:startTimeInclusive::timestamp starttime
-      ,  l.pipe_log_msg:endTimeExclusive::timestamp endtime
+      , case when lower(pipe.value:Path::string) like '%.json%'
+             then 'JSON'
+             when lower(pipe.value:Path::string) like '%.tsv%'
+             then 'TSV'
+             when lower(pipe.value:Path::string) like '%.csv%'
+             then 'CSV'
+             else 'UNK'
+         end fileFormat
+      ,  lower(l.pipe_log_msg:Pipe::string) pipe
+      ,  coalesce(l.pipe_log_msg:starttime, l.pipe_log_msg:startTimeInclusive)::timestamp starttime
+      ,  coalesce(l.pipe_log_msg:endtime, l.pipe_log_msg:endTimeExclusive)::timestamp endtime
       ,  TIMESTAMPDIFF('seconds', starttime, endtime)  pipe_duration
       ,  pipe_duration / 60 pipe_duration_mins
       ,  l.pipe_log_msg:completeResult::boolean completeResult
-      ,  l.pipe_log_msg:rangeStartTime::timestamp rangeStartTime
-      ,  l.pipe_log_msg:rangeEndtime::timestamp rangeEndtime
-      ,  pipe.value:Complete::boolean Complete
+      ,  coalesce(l.pipe_log_msg:rangeStartTime, l.pipe_log_msg:starttime)::timestamp rangeStartTime
+      ,  coalesce(l.pipe_log_msg:rangeEndtime, l.pipe_log_msg:endtime)::timestamp rangeEndtime
+      ,  null::boolean Complete
+     // ,  pipe.value:Complete::boolean Complete
       ,  pipe.value:ErrorsLimit::bigint ErrorsLimit
       ,  pipe.value:ErrorsSeen::bigint ErrorsSeen
       ,  pipe.value:FirstError::string FirstError
-      ,  pipe.value:FirstErrorLineNum::bigint FirstErrorLineNum
+      ,  pipe.value:FirstErrorLineNum::string  FirstErrorLineNum
       ,  pipe.value:FirstErrorColumnName::string FirstErrorColumnName
       ,  pipe.value:SystemError::string SystemError
       ,  pipe.value:FileSize::float FileSize
@@ -39,14 +48,6 @@ select
      ,  FileSizeGB / duration GBPerSec
       ,  FileSizeKB / duration KBPerSec
       ,  FileSize / duration BytesPerSec
-      , case when lower(pipe.value:Path::string) like '%.json%'
-             then 'JSON'
-             when lower(pipe.value:Path::string) like '%.tsv%'
-             then 'TSV'
-             when lower(pipe.value:Path::string) like '%.csv%'
-             then 'CSV'
-             else 'UNK'
-         end fileFormat
      /* , res.Complete
       ,  res.value:Complete::boolean complete*/
       //, pipe.*
